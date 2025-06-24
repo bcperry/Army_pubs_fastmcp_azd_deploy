@@ -119,7 +119,7 @@ def parse_search_results(html_content: str) -> list[dict[str, Any]]:
         
 
 @mcp.tool()
-async def search_pubs(query: str) -> str:
+async def search_pubs(query: str) -> list[dict[str, Any]]:
     """Get a specific document from the Army publications website.
 
     Args:
@@ -131,7 +131,7 @@ async def search_pubs(query: str) -> str:
     
     html_content = await make_pubs_request(url)
     if not html_content:
-        return "Unable to fetch search results. Please try again later."
+        return [{0: "Failed to return any results, try again later, or try searching something else"}]  # Return empty list instead of string
     
     # Parse the HTML and extract structured data
     results = parse_search_results(html_content)
@@ -330,16 +330,16 @@ async def get_publication(publication_url: str) -> str:
     filetype = publication_url.split('.')[-1] if '.' in publication_url else None
     document_text = await get_document_text_from_url(publication_url, filetype)
 
-    if document_text:
+    if document_text and not document_text.startswith("CAC_REQUIRED:"):
         print(f"Text extracted successfully ({len(document_text)} characters)")
         print("First 500 characters:")
         print(document_text[:500] + "..." if len(document_text) > 500 else document_text)
+        return document_text
+    elif document_text and document_text.startswith("CAC_REQUIRED:"):
+        return document_text  # Return the CAC message as-is
     else:
-        return("Failed to extract text from the publication. It may not be a supported format or the content could not be retrieved.")
-
-    return document_text
-
+        return "Failed to extract text from the publication. It may not be a supported format or the content could not be retrieved."
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http", host="0.0.0.0", port=8000)
+    mcp.run(transport="sse", host="0.0.0.0", port=8000)
 
